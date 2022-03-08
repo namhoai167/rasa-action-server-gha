@@ -26,6 +26,10 @@ inputs:
     description: "Docker image tag."
     default: ${{ github.run_id }}
     required: false
+  docker_image_latest_tag:
+    description: "Add docker image latest tag."
+    default: "false"
+    required: false
   docker_registry_push:
     description: "Push a docker image to the registry. If `False` the user can add manual extra steps in their workflow which use the built image."
     default: "true"
@@ -71,6 +75,11 @@ runs:
 
         # Set DOCKER_IMAGE_FULL_NAME
         echo "DOCKER_IMAGE_FULL_NAME=${{ inputs.docker_registry }}/${{ inputs.docker_image_name }}:${{ inputs.docker_image_tag }}" >> $GITHUB_ENV
+
+        # Set DOCKER_IMAGE_WITH_LATEST_TAG
+        if [[ "${{ inputs.docker_image_latest_tag }}" == "true" ]]; then
+          echo "DOCKER_IMAGE_WITH_LATEST_TAG=${{ inputs.docker_registry }}/${{ inputs.docker_image_name }}:latest" >> $GITHUB_ENV
+        fi
 
     - name: Copy files
       shell: bash
@@ -137,6 +146,7 @@ runs:
         echo ""
         docker build \
           --tag "${{ env.DOCKER_IMAGE_FULL_NAME }}" \
+          --tag "${{ env.DOCKER_IMAGE_WITH_LATEST_TAG }}" \
           --build-arg GITHUB_SHA="$GITHUB_SHA" \
           --build-arg GITHUB_REF="$GITHUB_REF" \
           --build-arg DOCKER_IMAGE_NAME="${{ inputs.docker_image_name }}" \
@@ -151,6 +161,10 @@ runs:
         if [[ "${{ inputs.docker_registry_push}}" == "true" ]]; then
           echo "Pushing the ${{ env.DOCKER_IMAGE_FULL_NAME }} image into the registry..."
           docker push ${{ env.DOCKER_IMAGE_FULL_NAME }}
+          if [[ "${{ inputs.docker_image_latest_tag }}" == "true" ]]; then
+            echo "Pushing the ${{ env.DOCKER_IMAGE_WITH_LATEST_TAG }} image into the registry..."
+            docker push ${{ env.DOCKER_IMAGE_WITH_LATEST_TAG }}
+          fi
         else
           echo "The image won't be pushed into the repository. The docker_registry_push input parameter has to be set to 'true' in order to push the docker image."
         fi
